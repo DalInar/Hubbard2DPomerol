@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <algorithm>
 #include <tclap/CmdLine.h>
 
@@ -24,6 +25,8 @@ using namespace Pomerol;
 /* Auxiliary routines - implemented in the bottom. */
 void print_section (const std::string& str);
 int SiteIndexF(size_t size_x, size_t x, size_t y);
+template <typename T1> void savetxt(std::string fname, T1 in);
+double FMatsubara(int n, double beta){return M_PI/beta*(2.*n+1);}
 
 int main(int argc, char* argv[]) {
     boost::mpi::environment env(argc,argv);
@@ -112,6 +115,97 @@ int main(int argc, char* argv[]) {
         };
     };
 
+    int rank = comm.rank();
+    if (!rank) {
+        INFO("Terms with 2 operators");
+        Lat.printTerms(2);
+
+        INFO("Terms with 4 operators");
+        Lat.printTerms(4);
+    };
+
+    IndexClassification IndexInfo(Lat.getSiteMap());
+    IndexInfo.prepare(false); // Create index space
+    if (!rank) { print_section("Indices"); IndexInfo.printIndices(); };
+    int index_size = IndexInfo.getIndexSize();
+
+    print_section("Matrix element storage");
+    IndexHamiltonian Storage(&Lat,IndexInfo);
+    Storage.prepare(); // Write down the Hamiltonian as a symbolic formula
+    print_section("Terms");
+    if (!rank) INFO(Storage);
+
+    Symmetrizer Symm(IndexInfo, Storage);
+    Symm.compute(); // Find symmetries of the problem
+
+    StatesClassification S(IndexInfo,Symm); // Introduce Fock space and classify states to blocks
+    S.compute();
+
+    Hamiltonian H(IndexInfo, Storage, S); // Hamiltonian in the basis of Fock Space
+    H.prepare(); // enter the Hamiltonian matrices
+    H.compute(); // compute eigenvalues and eigenvectors
+
+    RealVectorType evals (H.getEigenValues());
+    std::sort(evals.data(), evals.data() + H.getEigenValues().size());
+    savetxt("spectrum.dat", evals); // dump eigenvalues
+
+    DensityMatrix rho(S,H,beta); // create Density Matrix
+    rho.prepare();
+    rho.compute(); // evaluate thermal weights with respect to ground energy, i.e exp(-beta(e-e_0))/Z
+
+    INFO("<N> = " << rho.getAverageOccupancy()); // get average total particle number
+    savetxt("N_T.dat",rho.getAverageOccupancy());
+
+    // Green's function calculation starts here
+
+    FieldOperatorContainer Operators(IndexInfo, S, H); // Create a container for c and c^+ in the eigenstate basis
+
+    if (calc_gf) {
+
+        INFO("1-particle Green's functions calc");
+        std::set<ParticleIndex> f;
+        std::set<IndexCombination2> indices2;
+        ParticleIndex d0 = IndexInfo.getIndex("S0", 0, down);
+        ParticleIndex u0 = IndexInfo.getIndex("S0", 0, up);
+        f.insert(u0);
+        f.insert(d0);
+        for (size_t x = 0; x < size_x; x++) {
+            ParticleIndex ind = IndexInfo.getIndex(names[SiteIndexF(size_x, x, 0)], 0, down);
+            f.insert(ind);
+            indices2.insert(IndexCombination2(d0, ind));
+        };
+
+        Operators.prepareAll(f);
+        Operators.computeAll(); // evaluate c, c^+ for chosen indices
+
+        GFContainer G(IndexInfo, S, H, rho, Operators);
+
+        G.prepareAll(indices2); // identify all non-vanishing block connections in the Green's function
+        G.computeAll(); // Evaluate all GF terms, i.e. resonances and weights of expressions in Lehmans representation of the Green's function
+
+        if (!comm.rank()) { // dump gf into a file
+            std::set<IndexCombination2>::iterator ind2;
+            for (ind2 = indices2.begin(); ind2 !=
+                                          indices2.end(); ++ind2) { // loops over all components (pairs of indices) of the Green's function
+                // Save Matsubara GF from pi/beta to pi/beta*(4*wf_max + 1)
+                std::cout << "Saving imfreq G" << *ind2 << " on " << 4 * wf_max << " Matsubara freqs. " << std::endl;
+
+                std::stringstream fname;
+                fname << "gw_imag" << (*ind2).Index1 << (*ind2).Index2 << ".dat";
+                std::ofstream gw_im(fname.str().c_str());
+
+                const GreensFunction &GF = G(*ind2);
+                for (int wn = 0; wn < wf_max * 4; wn++) {
+                    ComplexType val = GF(
+                            I * FMatsubara(wn, beta)); // this comes from Pomerol - see GreensFunction::operator()
+                    gw_im << std::scientific << std::setprecision(12) << FMatsubara(wn, beta) << "   " << real(val) <<
+                    " " << imag(val) << std::endl;
+                };
+                gw_im.close();
+            }
+        }
+    }
+
     return 0;
 }
 
@@ -126,3 +220,5 @@ void print_section (const std::string& str)
         std::cout << std::string(str.size(),'=') << std::endl;
     };
 }
+
+template <typename T1> void savetxt(std::string fname, T1 in){std::ofstream out(fname.c_str()); out << in << std::endl; out.close();};
