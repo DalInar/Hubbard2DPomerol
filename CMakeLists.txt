@@ -23,19 +23,14 @@ find_package (Eigen3 3.1 REQUIRED)
 message(STATUS "Eigen3 includes: " ${EIGEN3_INCLUDE_DIR} )
 include_directories(${PROJECT_NAME} PUBLIC ${EIGEN3_INCLUDE_DIR})
 
-set(Pomerol_INCLUDE_DIR /usr/local/include)
-include_directories(${PROJECT_NAME} PUBLIC ${Pomerol_INCLUDE_DIR})
+find_package(pomerol)
+include_directories(${PROJECT_NAME} PUBLIC ${pomerol_INCLUDE_DIRS})
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -H")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPOMEROL_COMPLEX_MATRIX_ELEMENTS")
 
-link_directories(/usr/local/lib)
 set(SOURCE_FILES main.cpp)
 add_executable(Hubbard2DPomerol ${SOURCE_FILES})
 
-set(Pomerol_LIBRARIES /usr/local/lib/libpomerol.so)
-message(STATUS "Pomerol_LIBRARIES: " ${Pomerol_LIBRARIES} )
-
-
-target_link_libraries(Hubbard2DPomerol libpomerol.so ${Pomerol_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(Hubbard2DPomerol ${pomerol_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES})
