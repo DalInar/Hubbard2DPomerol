@@ -39,10 +39,13 @@ int main(int argc, char* argv[]) {
     bool calc_gf, calc_2pgf;
     int wf_max, wb_max;
     double eta, hbw, step; // for evaluation of GF on real axis
+    double phase_x, phase_y; //TBC phases in x and y direction
 
     try { // command line parser
         TCLAP::CmdLine cmd("Hubbard nxn diag", ' ', "");
         TCLAP::ValueArg<RealType> U_arg("U","U","Value of U",true,10.0,"RealType",cmd);
+        TCLAP::ValueArg<RealType> phase_x_arg("","phase_x","Value of phase_x", false, 0.0,"RealType",cmd);
+        TCLAP::ValueArg<RealType> phase_y_arg("","phase_y","Value of phase_y", false, 0.0,"RealType",cmd);
         TCLAP::ValueArg<RealType> mu_arg("","mu","Global chemical potential",false,0.0,"RealType",cmd);
         TCLAP::ValueArg<RealType> t_arg("t","t","Value of t",false,1.0,"RealType",cmd);
 
@@ -66,6 +69,8 @@ int main(int argc, char* argv[]) {
 
         cmd.parse( argc, argv );
         U = U_arg.getValue();
+        phase_x = phase_x_arg.getValue();
+        phase_y = phase_y_arg.getValue();
         mu = (mu_arg.isSet()?mu_arg.getValue():U/2);
         boost::tie(t, beta, calc_gf, calc_2pgf, reduce_tol, coeff_tol) = boost::make_tuple( t_arg.getValue(), beta_arg.getValue(),
                                                                                             gf_arg.getValue(), twopgf_arg.getValue(), reduce_tol_arg.getValue(), coeff_tol_arg.getValue());
@@ -104,14 +109,17 @@ int main(int argc, char* argv[]) {
     for (size_t i=0; i<L; i++) LatticePresets::addCoulombS(&Lat, names[i], U_complex, -mu_complex);
 
     /* Add hopping */
+    MelemType t_phased_x = t*exp(std::complex<double> (0, phase_x / size_x));
+    MelemType t_phased_y = t*exp(std::complex<double> (0, phase_y / size_y));
+    std::cout<< "t_phased_x = "<<t_phased_x<<std::endl;
     for (size_t y=0; y<size_y; y++) {
         for (size_t x=0; x<size_x; x++) {
             size_t pos = SiteIndexF(size_x, x,y);
             size_t pos_right = SiteIndexF(size_x, (x+1)%size_x,y); /*if (x == size_x - 1) pos_right = SiteIndexF(0,y); */
             size_t pos_up = SiteIndexF(size_x, x,(y+1)%size_y);
 
-            if (size_x > 1) LatticePresets::addHopping(&Lat, std::min(names[pos], names[pos_right]), std::max(names[pos], names[pos_right]), -t);
-            if (size_y > 1) LatticePresets::addHopping(&Lat, std::min(names[pos], names[pos_up]), std::max(names[pos], names[pos_up]), -t);
+            if (size_x > 1) LatticePresets::addHopping(&Lat, std::min(names[pos], names[pos_right]), std::max(names[pos], names[pos_right]), -t_phased_x);
+            if (size_y > 1) LatticePresets::addHopping(&Lat, std::min(names[pos], names[pos_up]), std::max(names[pos], names[pos_up]), -t_phased_y);
         };
     };
 
