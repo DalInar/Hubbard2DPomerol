@@ -118,8 +118,8 @@ int main(int argc, char* argv[]) {
             size_t pos_right = SiteIndexF(size_x, (x+1)%size_x,y); /*if (x == size_x - 1) pos_right = SiteIndexF(0,y); */
             size_t pos_up = SiteIndexF(size_x, x,(y+1)%size_y);
 
-            if (size_x > 1) LatticePresets::addHopping(&Lat, std::min(names[pos], names[pos_right]), std::max(names[pos], names[pos_right]), -t_phased_x);
-            if (size_y > 1) LatticePresets::addHopping(&Lat, std::min(names[pos], names[pos_up]), std::max(names[pos], names[pos_up]), -t_phased_y);
+            if (size_x > 1) LatticePresets::addHopping(&Lat, names[pos], names[pos_right], -t_phased_x);
+            if (size_y > 1) LatticePresets::addHopping(&Lat, names[pos], names[pos_up], -t_phased_y);
         };
     };
 
@@ -193,6 +193,8 @@ int main(int argc, char* argv[]) {
 
         if (!comm.rank()) { // dump gf into a file
             std::set<IndexCombination2>::iterator ind2;
+            std::vector< std::complex<double> > GFk0 (4*wf_max, 0);
+            int ind2_count = 0;
             for (ind2 = indices2.begin(); ind2 !=
                                           indices2.end(); ++ind2) { // loops over all components (pairs of indices) of the Green's function
                 // Save Matsubara GF from pi/beta to pi/beta*(4*wf_max + 1)
@@ -208,9 +210,20 @@ int main(int argc, char* argv[]) {
                             I * FMatsubara(wn, beta)); // this comes from Pomerol - see GreensFunction::operator()
                     gw_im << std::scientific << std::setprecision(12) << FMatsubara(wn, beta) << "   " << real(val) <<
                     " " << imag(val) << std::endl;
+                    GFk0[wn] += val;
                 };
                 gw_im.close();
+                ind2_count += 1;
             }
+            std::stringstream fname;
+            fname << "gw_imag_k0.dat";
+            std::ofstream gw_im(fname.str().c_str());
+            for (int wn = 0; wn < wf_max * 4; wn++) {
+                //GFk0[wn] /= ind2_count;
+                gw_im << std::scientific << std::setprecision(12) << FMatsubara(wn, beta) << "   " << real(GFk0[wn]) <<
+                " " << imag(GFk0[wn]) << std::endl;
+            };
+            gw_im.close();
         }
     }
 
