@@ -32,5 +32,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DPOMEROL_COMPLEX_MATRIX_ELEMENTS")
 
 set(SOURCE_FILES main.cpp)
 add_executable(Hubbard2DPomerol ${SOURCE_FILES})
+add_executable(Hubbard2DCrossPomerol Hub2DCross.cpp)
 
 target_link_libraries(Hubbard2DPomerol ${pomerol_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(Hubbard2DCrossPomerol ${pomerol_LIBRARIES} ${MPI_CXX_LIBRARIES} ${Boost_LIBRARIES})
