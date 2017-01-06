@@ -105,8 +105,8 @@ int main(int argc, char* argv[]) {
     for (size_t i=0; i<5; i++) LatticePresets::addCoulombS(&Lat, names[i], U_complex, -mu_complex);
 
     /* Add hopping */
-    MelemType t_phased_x = t*exp(std::complex<double> (0, -4.*M_PI*phase_x/5 + 2.*M_PI*phase_y/5 ));
-    MelemType t_phased_y = t*exp(std::complex<double> (0, 2.*M_PI*phase_x/5 + 4.*M_PI*phase_y/5 ));
+    MelemType t_phased_x = t*exp((1./(2*M_PI)) * std::complex<double> (0, -4.*M_PI*phase_x/5 + 2.*M_PI*phase_y/5 ));
+    MelemType t_phased_y = t*exp((1./(2*M_PI)) * std::complex<double> (0, 2.*M_PI*phase_x/5 + 4.*M_PI*phase_y/5 ));
     std::cout<< "t_phased_x = "<<t_phased_x<<std::endl;
     for (size_t i=0; i<5; i++) {
         size_t pos = i;

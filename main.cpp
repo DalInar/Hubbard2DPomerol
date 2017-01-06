@@ -164,6 +164,9 @@ int main(int argc, char* argv[]) {
     INFO("<N> = " << rho.getAverageOccupancy()); // get average total particle number
     savetxt("N_T.dat",rho.getAverageOccupancy());
 
+    INFO("<E>/N = " << rho.getAverageEnergy()/5.); // get average energy per site
+    savetxt("Energy.dat",rho.getAverageEnergy()/5.);
+
     // Green's function calculation starts here
 
     FieldOperatorContainer Operators(IndexInfo, S, H); // Create a container for c and c^+ in the eigenstate basis
